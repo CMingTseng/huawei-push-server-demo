@@ -31,6 +31,7 @@ public class HWPushMsgSendHelper {
         return sInstance;
     }
 
+    private boolean mInitialized;
     private String mAppId;
     private String mAppSecret;
 
@@ -39,17 +40,10 @@ public class HWPushMsgSendHelper {
     private HWPushMsgSendHelper() {
     }
 
-    public boolean initialize(String appId, String appSecret) throws IOException {
-        mAppId = appId;
-        mAppSecret = appSecret;
-
-        if (StringUtils.isEmpty(appId) || StringUtils.isEmpty(appSecret)) {
-            throw new IllegalArgumentException("Appid is " + appId + ", app secret is " + appSecret);
-        }
-
+    private AccessTokenDto getAccessToken() throws IOException {
         AccessTokenDto accessTokenDto = null;
         String msgBody = MessageFormat.format(REFRESH_TOKEN_BODY_FORMAT,
-                URLEncoder.encode(appSecret, "UTF-8"), appId);
+                URLEncoder.encode(mAppSecret, "UTF-8"), mAppId);
         String response = httpPost(HUAWEI_TOKEN_URL, msgBody);
 
         if (response != null) {
@@ -61,24 +55,49 @@ public class HWPushMsgSendHelper {
                 accessTokenDto.setExpires_in(expiredTime);
             }
         }
+        return accessTokenDto;
+    }
 
-        mAccessToken = accessTokenDto;
+    public synchronized boolean initialize(String appId, String appSecret) throws IOException {
+        if (mInitialized) {
+            return true;
+        }
+
+        if (StringUtils.isEmpty(appId) || StringUtils.isEmpty(appSecret)) {
+            throw new IllegalArgumentException("Appid is " + appId + ", app secret is " + appSecret);
+        }
+        mAppId = appId;
+        mAppSecret = appSecret;
+
+        mAccessToken = getAccessToken();
         if (mAccessToken == null) {
             LogUtil.println("Get access token failed.");
             return false;
         }
+        mInitialized = true;
         return true;
     }
 
-//    //获取下发通知消息的认证Token
-//    public boolean refreshToken() throws IOException {
-//
-//    }
-
-    public boolean checkAccessTokenValidity() {
-        AccessTokenDto accessTokenDto = mAccessToken;
-        if (accessTokenDto == null) {
+    //获取下发通知消息的认证Token
+    public boolean refreshToken() throws IOException {
+        AccessTokenDto accessToken = getAccessToken();
+        if (accessToken == null) {
+            LogUtil.println("Get access token failed.");
             return false;
+        }
+        synchronized (this) {
+            mAccessToken = accessToken;
+        }
+        return true;
+    }
+
+    public boolean isAccessTokenValid() {
+        AccessTokenDto accessTokenDto;
+        synchronized (this) {
+            accessTokenDto = mAccessToken;
+            if (accessTokenDto == null) {
+                return false;
+            }
         }
         long now = System.currentTimeMillis();
         long expired_in = accessTokenDto.getExpires_in();
@@ -88,7 +107,7 @@ public class HWPushMsgSendHelper {
         return true;
     }
 
-    public JSONArray getDeviceTokenArray(List<String> deviceTokens) {
+    private JSONArray getDeviceTokenArray(List<String> deviceTokens) {
         JSONArray deviceTokenArray = null;
         if (deviceTokens != null && deviceTokens.size() > 0) {
             deviceTokenArray = new JSONArray();
@@ -126,7 +145,13 @@ public class HWPushMsgSendHelper {
         return messageActionDto;
     }
 
-    private PushMessageDto constructMessage(int type, Object body, MessageActionDto messageActionDto) {
+    public MessageActionDto constructOpenUrlAction(String url) {
+        MessageActionDto messageActionDto = constructAction(MessageActionDto.ACTION_TYPE_OPEN_URL, url);
+
+        return messageActionDto;
+    }
+
+    public PushMessageDto constructMessage(int type, Object body, MessageActionDto messageActionDto) {
         PushMessageDto messageDto = new PushMessageDto();
         messageDto.setType(type);
         messageDto.setAction(messageActionDto);
@@ -147,6 +172,18 @@ public class HWPushMsgSendHelper {
         return messageDto;
     }
 
+    public PushMessageDto constructOpenAppNotificationMsg(String packageName, String msgTitle, String msgContent) {
+        MessageActionDto messageActionDto = constructOpenAppAction(packageName);
+        PushMessageDto messageDto = constructNotificationMsg(msgTitle, msgContent, messageActionDto);
+        return messageDto;
+    }
+
+    public PushMessageDto constructOpenUrlNotificationMsg(String url, String msgTitle, String msgContent) {
+        MessageActionDto messageActionDto = constructOpenUrlAction(url);
+        PushMessageDto messageDto = constructNotificationMsg(msgTitle, msgContent, messageActionDto);
+        return messageDto;
+    }
+
     public ExtDto constructExtDto(String biTag, List<Map> customize) {
         ExtDto extDto = new ExtDto();
         extDto.setBiTag(biTag);
@@ -155,7 +192,7 @@ public class HWPushMsgSendHelper {
         return extDto;
     }
 
-    public String constuctPayload(ExtDto extDto, PushMessageDto messageDto) {
+    private String constuctPayload(ExtDto extDto, PushMessageDto messageDto) {
         HWPushMsgDto msgDto = new HWPushMsgDto();
         msgDto.setExt(extDto);
         msgDto.setMsg(messageDto);
@@ -168,13 +205,16 @@ public class HWPushMsgSendHelper {
         return payload;
     }
 
-    public static String httpPost(String httpUrl, String data) throws IOException {
+    private String httpPost(String httpUrl, String data) throws IOException {
         EduResponse response = HttpEngine.getInstance().postSync(httpUrl, null, data, HttpEngine.FORM);
         String result = response.body().string();
         return result;
     }
 
-    public void sendPushMessage(JSONArray deviceTokens, String payload) throws IOException {
+    public void sendPushMessage(List<String> deviceTokenList, PushMessageDto messageDto, ExtDto extDto) throws IOException {
+        String payload = constuctPayload(extDto, messageDto);
+
+        JSONArray deviceTokens = getDeviceTokenArray(deviceTokenList);
         String accessToken = mAccessToken.getAccess_token();
         String appId = mAppId;
         String postBody = MessageFormat.format(

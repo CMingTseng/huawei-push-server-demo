@@ -1,6 +1,5 @@
 package com.netease.study.pushserver;
 
-import com.alibaba.fastjson.JSONArray;
 import com.netease.study.pushserver.Dto.*;
 
 import java.io.IOException;
@@ -22,31 +21,87 @@ public class PushServer {
 
     public static void main(String[] args) throws IOException {
         HWPushMsgSendHelper.getInstance().initialize(appId, appSecret);
-        if (HWPushMsgSendHelper.getInstance().checkAccessTokenValidity()) {
+        if (HWPushMsgSendHelper.getInstance().isAccessTokenValid()) {
             List<String> deviceTokenList = getDeviceTokenList();
 
-            sendNotifyPushMessage(deviceTokenList);
+//            sendOpenAppNotifyPushMessageWithExt(deviceTokenList);
+//
+//            sendOpenAppNotifyPushMessageWithNULLExt(deviceTokenList);
+
+            sendOpenUrlNotifyPushMessage(deviceTokenList);
+            sendTransparentPushMessage(deviceTokenList);
         }
     }
 
-    //发送Push消息
-    private static void sendNotifyPushMessage(List<String> deviceTokenList) throws IOException {
-        JSONArray deviceTokens = HWPushMsgSendHelper.getInstance().getDeviceTokenArray(deviceTokenList);
-
-        MessageActionDto messageActionDto = HWPushMsgSendHelper.getInstance().constructOpenAppAction("com.netease.edu.study.message");
-
-        String msgTitle = "Push message title";
-        String msgContent = "Push message content";
-
-        PushMessageDto messageDto = HWPushMsgSendHelper.getInstance().constructNotificationMsg(msgTitle, msgContent, messageActionDto);
-
+    private static ExtDto getMockExt() {
         Map<String, Object> customize = new HashMap<>();
         customize.put("icon", "http://pic.qiantucdn.com/58pic/12/38/18/13758PIC4GV.jpg");
         List<Map> extlist = new ArrayList<>();
         extlist.add(customize);
         ExtDto extDto = HWPushMsgSendHelper.getInstance().constructExtDto("Trump", extlist);
+        return extDto;
+    }
 
-        String payload = HWPushMsgSendHelper.getInstance().constuctPayload(extDto, messageDto);
-        HWPushMsgSendHelper.getInstance().sendPushMessage(deviceTokens, payload);
+    private static void sendOpenAppNotifyPushMessage(List<String> deviceTokenList, String packageName,
+                                                     String title, String content, ExtDto extDto) throws IOException {
+        PushMessageDto messageDto = HWPushMsgSendHelper.getInstance().constructOpenAppNotificationMsg(packageName,
+                title, content);
+
+        HWPushMsgSendHelper.getInstance().sendPushMessage(deviceTokenList, messageDto, extDto);
+    }
+
+    //发送Push消息
+    private static void sendOpenAppNotifyPushMessageWithExt(List<String> deviceTokenList) throws IOException {
+        String appPackageName = "com.netease.edu.study.message";
+
+        String msgTitle = "Push message title (contain ext)";
+        String msgContent = "Push message content (contain ext)";
+
+        ExtDto extDto = getMockExt();
+
+        sendOpenAppNotifyPushMessage(deviceTokenList, appPackageName, msgTitle, msgContent, extDto);
+    }
+
+    //发送Push消息
+    private static void sendOpenAppNotifyPushMessageWithNULLExt(List<String> deviceTokenList) throws IOException {
+        String appPackageName = "com.netease.edu.study.message";
+
+        String msgTitle = "Push message title (non ext)";
+        String msgContent = "Push message content (non ext)";
+
+        PushMessageDto messageDto = HWPushMsgSendHelper.getInstance().constructOpenAppNotificationMsg(appPackageName,
+                msgTitle, msgContent);
+
+        ExtDto extDto = null;
+
+        HWPushMsgSendHelper.getInstance().sendPushMessage(deviceTokenList, messageDto, extDto);
+    }
+
+    //发送Push消息
+    private static void sendOpenUrlNotifyPushMessage(List<String> deviceTokenList) throws IOException {
+        String url = "https://rong.36kr.com/";
+
+        String msgTitle = "Push message title (url)";
+        String msgContent = "Push message content (url)";
+
+        PushMessageDto messageDto = HWPushMsgSendHelper.getInstance().constructOpenUrlNotificationMsg(url,
+                msgTitle, msgContent);
+
+        ExtDto extDto = null;
+
+        HWPushMsgSendHelper.getInstance().sendPushMessage(deviceTokenList, messageDto, extDto);
+    }
+
+    //发送Push消息
+    private static void sendTransparentPushMessage(List<String> deviceTokenList) throws IOException {
+        Map<String, Object> body = new HashMap<>();
+        body.put("transparent_message", "transparent message content");
+
+        PushMessageDto messageDto = HWPushMsgSendHelper.getInstance().constructMessage(PushMessageDto.TYPE_TRANSPARENT_MESSAGE,
+                body, null);
+
+        ExtDto extDto = null;
+
+        HWPushMsgSendHelper.getInstance().sendPushMessage(deviceTokenList, messageDto, extDto);
     }
 }
