@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Map;
 
 public class PushServer {
-    private static String appSecret = "080bf0556572b57015da9b5778c6ef5b";
-    private static String appId = "100341497";//用户在华为开发者联盟申请的appId和appSecret（会员中心->应用管理，点击应用名称的链接）
+    private static String appSecret = "ed4344ae042672778593ef4aadad5d65";
+    private static String appId = "100386409";//用户在华为开发者联盟申请的appId和appSecret（会员中心->应用管理，点击应用名称的链接）
 
 
     private static List<String> getDeviceTokenList() {
         List<String> deviceTokenList = new ArrayList<>();
-        deviceTokenList.add("AGGxODrs9vPCnRqRkClSRZG6-odoRngCJTWeiW6GmCgYj0_ZIgfUZZCUOTjCLB1ad5Xq3zKssLQIk1NL0jS4yFrpXHJCgfYpYwPmRZBETWyzgrVjVZoDM-Bp_bW2xDh6RQ");
+        deviceTokenList.add("0867600023473431300002289500CN01");
         return deviceTokenList;
     }
 
@@ -52,7 +52,7 @@ public class PushServer {
 
     //发送Push消息
     private static void sendOpenAppNotifyPushMessageWithExt(List<String> deviceTokenList) throws IOException {
-        String appPackageName = "com.netease.edu.study.message";
+        String appPackageName = "com.netease.edu.study.debug";
 
         String msgTitle = "Push message title (contain ext)";
         String msgContent = "Push message content (contain ext)";
