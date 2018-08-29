@@ -19,4 +19,22 @@ public class PushController {
         System.out.println("callback data: " + callback);
         return "ok";
     }
+
+    @RequestMapping("/callback/huawei/v{ver}")
+    @ResponseBody
+    public String callbackHuawei(HttpServletRequest request) {
+        String callback = request.getParameter("data");
+        System.out.println("callback data: " + callback);
+        return "ok";
+    }
+
+    @RequestMapping("/callback/meizu/v{ver}")
+    @ResponseBody
+    public String callbackMeizu(HttpServletRequest request) {
+        String callbackData = request.getParameter("cb");
+        String accessToken = request.getParameter("access_token");
+        System.out.println("callbackData:" + callbackData);
+        System.out.println("accessToken:" + accessToken);
+        return "ok";
+    }
 }

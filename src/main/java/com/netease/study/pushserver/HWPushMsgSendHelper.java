@@ -18,6 +18,7 @@ public class HWPushMsgSendHelper {
 
     //获取认证Token的URL
     private static String HUAWEI_TOKEN_URL = "https://login.cloud.huawei.com/oauth2/v2/token";
+
     //应用级消息下发API
     private static String HUAWEI_PUSH_API_URL = "https://api.push.hicloud.com/pushsend.do";
 
